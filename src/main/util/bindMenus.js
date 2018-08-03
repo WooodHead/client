@@ -1,9 +1,31 @@
-import { app, shell, webContents, Menu } from 'electron';
+import { app, shell, webContents, ipcMain, Menu } from 'electron';
 import { find } from 'lodash';
 
 const isMac = process.platform === 'darwin';
 
-function bindAppMenu(browserWindow) {
+const getActiveId = (() => {
+  let activeId = null;
+
+  ipcMain.on('webview:focus', (id) => {
+    activeId = id;
+  });
+
+  return () => activeId;
+})();
+
+function getActiveWebview() {
+  return webContents.fromId(getActiveId());
+}
+
+function sendToActiveWebview(...args) {
+  const webview = getActiveWebview();
+
+  if (webview) {
+    webview.send(...args);
+  }
+}
+
+function bindAppMenu() {
   const template = [
     {
       label: 'Edit',
@@ -25,12 +47,12 @@ function bindAppMenu(browserWindow) {
         {
           label: 'Stop',
           accelerator: isMac ? 'Cmd+.' : 'Esc',
-          click() { browserWindow.webContents.send('view:stop'); }
+          click() { sendToActiveWebview('view:stop'); }
         },
         {
           label: 'Reload',
           accelorator: 'CmdOrCtrl+R',
-          click() { browserWindow.webContents.send('view:reload'); }
+          click() { sendToActiveWebview('view:reload'); }
         },
         // { type: 'separator' },
         // { role: 'togglefullscreen' },
@@ -41,7 +63,7 @@ function bindAppMenu(browserWindow) {
         {
           label: 'Toggle Developer Tools',
           accelerator: isMac ? 'Alt+Command+I' : 'Ctrl+Shift+I',
-          click() { browserWindow.webContents.send('view:devtools'); }
+          click() { sendToActiveWebview('view:devtools'); }
         }
       ]
     },
@@ -51,18 +73,12 @@ function bindAppMenu(browserWindow) {
         {
           label: 'Back',
           accelerator: 'CmdOrCtrl+[',
-          click() { browserWindow.webContents.send('history:back'); }
+          click() { sendToActiveWebview('history:back'); }
         },
         {
           label: 'Forward',
           accelerator: 'CmdOrCtrl+]',
-          click(_item, _focusedWindow) {
-            console.log('all:', webContents.getAllWebContents());
-            // console.log('item:', item);
-            // console.log('focusedWindow:', focusedWindow);
-            // console.log('all:', focusedWindow.webContents.getAllWebContents());
-            browserWindow.webContents.send('history:forward');
-          }
+          click() { sendToActiveWebview('history:forward'); }
         }
       ]
     },
@@ -176,6 +192,6 @@ function bindContextMenu(browserWindow) {
 }
 
 export default function bindMenus(browserWindow) {
-  bindAppMenu(browserWindow);
+  bindAppMenu();
   bindContextMenu(browserWindow);
 }
