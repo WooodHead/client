@@ -1,7 +1,9 @@
-import { app, shell, Menu } from 'electron';
+import { app, shell, webContents, Menu } from 'electron';
 import { find } from 'lodash';
 
-function bindAppMenu() {
+const isMac = process.platform === 'darwin';
+
+function bindAppMenu(browserWindow) {
   const template = [
     {
       label: 'Edit',
@@ -17,23 +19,53 @@ function bindAppMenu() {
         { role: 'selectall' }
       ]
     },
-    /*
-    // TODO: make this menu control the current browser tab (webview) rather than the renderer
     {
       label: 'View',
       submenu: [
-        { role: 'reload' },
-        { role: 'forcereload' },
-        { role: 'toggledevtools' },
+        {
+          label: 'Stop',
+          accelerator: isMac ? 'Cmd+.' : 'Esc',
+          click() { browserWindow.webContents.send('view:stop'); }
+        },
+        {
+          label: 'Reload',
+          accelorator: 'CmdOrCtrl+R',
+          click() { browserWindow.webContents.send('view:reload'); }
+        },
+        // { type: 'separator' },
+        // { role: 'togglefullscreen' },
+        // { role: 'resetzoom' },
+        // { role: 'zoomin' },
+        // { role: 'zoomout' },
         { type: 'separator' },
-        { role: 'resetzoom' },
-        { role: 'zoomin' },
-        { role: 'zoomout' },
-        { type: 'separator' },
-        { role: 'togglefullscreen' }
+        {
+          label: 'Toggle Developer Tools',
+          accelerator: isMac ? 'Alt+Command+I' : 'Ctrl+Shift+I',
+          click() { browserWindow.webContents.send('view:devtools'); }
+        }
       ]
     },
-    */
+    {
+      label: 'History',
+      submenu: [
+        {
+          label: 'Back',
+          accelerator: 'CmdOrCtrl+[',
+          click() { browserWindow.webContents.send('history:back'); }
+        },
+        {
+          label: 'Forward',
+          accelerator: 'CmdOrCtrl+]',
+          click(_item, _focusedWindow) {
+            console.log('all:', webContents.getAllWebContents());
+            // console.log('item:', item);
+            // console.log('focusedWindow:', focusedWindow);
+            // console.log('all:', focusedWindow.webContents.getAllWebContents());
+            browserWindow.webContents.send('history:forward');
+          }
+        }
+      ]
+    },
     {
       role: 'window',
       submenu: [
@@ -144,6 +176,6 @@ function bindContextMenu(browserWindow) {
 }
 
 export default function bindMenus(browserWindow) {
-  bindAppMenu();
+  bindAppMenu(browserWindow);
   bindContextMenu(browserWindow);
 }

@@ -68,6 +68,8 @@ export default class DAppContainer extends React.PureComponent {
     this.webview.removeEventListener('will-navigate', this.handleNavigatingToPage);
     this.webview.removeEventListener('did-navigate', this.handleNavigatedToPage);
     this.webview.removeEventListener('did-navigate-in-page', this.handleNavigatedToAnchor);
+    this.webview.removeEventListener('did-start-loading', this.handleLoading);
+    this.webview.removeEventListener('did-stop-loading', this.handleLoaded);
     this.webview.removeEventListener('did-fail-load', this.handleNavigateFailed);
     this.webview.removeEventListener('did-start-loading', this.handleLoading);
     this.webview.removeEventListener('did-stop-loading', this.handleLoaded);
@@ -156,6 +158,15 @@ export default class DAppContainer extends React.PureComponent {
     this.props.setTabTarget(this.props.sessionId, event.url);
   }
 
+  handleLoading = () => {
+    // TODO: clear errorCode and errorDescription
+    this.props.setTabLoaded(this.props.sessionId, false);
+  }
+
+  handleLoaded = () => {
+    this.props.setTabLoaded(this.props.sessionId, true);
+  }
+
   handleNavigateFailed = ({ errorCode, errorDescription, isMainFrame }) => {
     if (isMainFrame) {
       this.props.setTabError(this.props.sessionId, errorCode, errorDescription);
@@ -200,5 +211,26 @@ export default class DAppContainer extends React.PureComponent {
 
   isHidden = () => {
     return this.props.tab.errorCode !== null;
+  }
+
+  // public component functions
+  goBack = () => {
+    this.webview.goBack();
+  }
+
+  goForward = () => {
+    this.webview.goForward();
+  }
+
+  reload = () => {
+    this.webview.reload();
+  }
+
+  stop = () => {
+    this.webview.stop();
+  }
+
+  toggleDevTools = () => {
+    this.webview.getWebContents().toggleDevTools();
   }
 }
