@@ -14,7 +14,8 @@ const getActiveId = (() => {
 })();
 
 function getActiveWebview() {
-  return webContents.fromId(getActiveId());
+  const activeId = getActiveId();
+  return activeId ? webContents.fromId(activeId) : null;
 }
 
 function sendToActiveWebview(...args) {
