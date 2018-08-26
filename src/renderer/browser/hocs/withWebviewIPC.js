@@ -12,11 +12,11 @@ const withWebviewIPC = (Component) => {
     }
 
     componentWillUnmount() {
-      ipcRenderer.off('history:back', this.handleBack);
-      ipcRenderer.off('history:forward', this.handleForward);
-      ipcRenderer.off('view:reload', this.handleReload);
-      ipcRenderer.off('view:stop', this.handleStop);
-      ipcRenderer.off('view:devtools', this.handleDevTools);
+      ipcRenderer.removeListener('history:back', this.handleBack);
+      ipcRenderer.removeListener('history:forward', this.handleForward);
+      ipcRenderer.removeListener('view:reload', this.handleReload);
+      ipcRenderer.removeListener('view:stop', this.handleStop);
+      ipcRenderer.removeListener('view:devtools', this.handleDevTools);
     }
 
     render() {
