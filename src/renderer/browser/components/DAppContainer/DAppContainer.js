@@ -26,7 +26,7 @@ export default class DAppContainer extends React.PureComponent {
     empty: func.isRequired,
     openTab: func.isRequired,
     closeTab: func.isRequired,
-    onFocus: func
+    onFocus: func // eslint-disable-line react/no-unused-prop-types
   }
 
   static defaultProps = {
@@ -38,7 +38,7 @@ export default class DAppContainer extends React.PureComponent {
   async componentDidMount() {
     window.addEventListener('focus', this.handleFocusWindow);
 
-    this.webview.addEventListener('dom-ready', this.handleFocus);
+    this.webview.addEventListener('dom-ready', this.handleDomReady);
     this.webview.addEventListener('ipc-message', this.handleIPCMessage);
     this.webview.addEventListener('new-window', this.handleNewWindow);
     this.webview.addEventListener('page-title-updated', this.handlePageTitleUpdated);
@@ -70,7 +70,7 @@ export default class DAppContainer extends React.PureComponent {
   componentWillUnmount() {
     window.removeEventListener('focus', this.handleFocus);
 
-    this.webview.removeEventListener('dom-ready', this.handleFocus);
+    this.webview.removeEventListener('dom-ready', this.handleDomReady);
     this.webview.removeEventListener('ipc-message', this.handleIPCMessage);
     this.webview.removeEventListener('new-window', this.handleNewWindow);
     this.webview.removeEventListener('page-title-updated', this.handlePageTitleUpdated);
@@ -83,6 +83,8 @@ export default class DAppContainer extends React.PureComponent {
     this.webview.removeEventListener('did-start-loading', this.handleLoading);
     this.webview.removeEventListener('did-stop-loading', this.handleLoaded);
     this.webview.removeEventListener('close', this.handleCloseWindow);
+
+    this.webview.getWebContents().removeListener('before-input-event', this.handleInput);
 
     // remove any pending requests from the queue
     this.props.empty(this.props.sessionId);
@@ -139,9 +141,14 @@ export default class DAppContainer extends React.PureComponent {
     );
   }
 
-  handleFocus = () => {
+  handleDomReady = () => {
+    this.webview.getWebContents().addListener('before-input-event', this.handleInput);
+    this.handleFocus();
+  }
+
+  handleFocus = (props = this.props) => {
     this.webview.focus();
-    this.props.onFocus(this.webview.getWebContents().getId());
+    props.onFocus(this.webview.getWebContents().getId());
   }
 
   handleIPCMessage = (event) => {
@@ -197,6 +204,20 @@ export default class DAppContainer extends React.PureComponent {
 
   handleCloseWindow = () => {
     this.props.closeTab(this.props.sessionId);
+  }
+
+  handleInput = (event, input) => {
+    // Cmd+Left or Ctrl+Left
+    if (input.key === 'ArrowLeft' && (input.ctrl || input.meta) && !input.alt && !input.shift) {
+      event.preventDefault();
+      this.webview.goBack();
+    }
+
+    // Cmd+Right or Ctrl+Right
+    if (input.key === 'ArrowRight' && (input.ctrl || input.meta) && !input.alt && !input.shift) {
+      event.preventDefault();
+      this.webview.goForward();
+    }
   }
 
   handleResolve = (request, result) => {
