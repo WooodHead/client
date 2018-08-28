@@ -20,7 +20,18 @@ const withWebviewIPC = (Component) => {
     }
 
     render() {
-      return <Component ref={this.registerRef} {...this.props} />;
+      return (
+        <Component
+          {...this.props}
+          ref={this.registerRef}
+          onFocus={this.handleFocus}
+        />
+      );
+    }
+
+    handleFocus = (id) => {
+      console.log('focus!', id);
+      ipcRenderer.send('webview:focus', id);
     }
 
     handleBack = () => {

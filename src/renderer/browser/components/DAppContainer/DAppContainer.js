@@ -2,6 +2,7 @@ import path from 'path';
 import React from 'react';
 import classNames from 'classnames';
 import { string, func } from 'prop-types';
+import { noop } from 'lodash';
 
 import getStaticPath from '../../../util/getStaticPath';
 import bindContextMenu from '../../util/bindContextMenu';
@@ -23,15 +24,17 @@ export default class DAppContainer extends React.PureComponent {
     dequeue: func.isRequired,
     empty: func.isRequired,
     openTab: func.isRequired,
-    closeTab: func.isRequired
+    closeTab: func.isRequired,
+    onFocus: func
   }
 
   static defaultProps = {
-    className: null
+    className: null,
+    onFocus: noop
   }
 
   async componentDidMount() {
-    window.addEventListener('focus', this.handleFocus);
+    window.addEventListener('focus', this.handleFocusWindow);
 
     this.webview.addEventListener('dom-ready', this.handleFocus);
     this.webview.addEventListener('ipc-message', this.handleIPCMessage);
@@ -132,6 +135,7 @@ export default class DAppContainer extends React.PureComponent {
 
   handleFocus = () => {
     this.webview.focus();
+    this.props.onFocus(this.webview.getWebContents().getId());
   }
 
   handleIPCMessage = (event) => {

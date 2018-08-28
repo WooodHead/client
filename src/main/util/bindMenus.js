@@ -1,32 +1,28 @@
 import { app, shell, webContents, ipcMain, Menu } from 'electron';
-import { find } from 'lodash';
+import { noop, find } from 'lodash';
 
 const isMac = process.platform === 'darwin';
 
-const getActiveId = (() => {
-  let activeId = null;
+const NULL_WEBVIEW = {
+  canGoBack: () => false,
+  canGoForward: () => false,
+  isDevToolsOpened: () => false,
+  on: noop,
+  addListener: noop,
+  removeListener: noop
+};
 
-  ipcMain.on('webview:focus', (id) => {
-    activeId = id;
-  });
+function getWebview(id) {
+  // For some reason, `webContents.fromId(activeId)` is throwing an error even though it seems to be
+  // passing arguments of the correct type.
+  // const webview = id && webContents.fromId.call(webContents, id);
+  // return webview || NULL_WEBVIEW;
 
-  return () => activeId;
-})();
-
-function getActiveWebview() {
-  const activeId = getActiveId();
-  return activeId ? webContents.fromId(activeId) : null;
+  const allWebContents = webContents.getAllWebContents();
+  return find(allWebContents, (wc) => wc.getId() === id) || NULL_WEBVIEW;
 }
 
-function sendToActiveWebview(...args) {
-  const webview = getActiveWebview();
-
-  if (webview) {
-    webview.send(...args);
-  }
-}
-
-function bindAppMenu() {
+function bindAppMenu(webview) {
   const template = [
     {
       label: 'Edit',
@@ -48,12 +44,14 @@ function bindAppMenu() {
         {
           label: 'Stop',
           accelerator: isMac ? 'Cmd+.' : 'Esc',
-          click() { sendToActiveWebview('view:stop'); }
+          enabled: webview !== NULL_WEBVIEW && webview.isLoading(),
+          click: () => webview.stop()
         },
         {
           label: 'Reload',
           accelorator: 'CmdOrCtrl+R',
-          click() { sendToActiveWebview('view:reload'); }
+          enabled: webview !== NULL_WEBVIEW && !webview.isLoading(),
+          click: () => webview.reload()
         },
         // { type: 'separator' },
         // { role: 'togglefullscreen' },
@@ -63,8 +61,17 @@ function bindAppMenu() {
         { type: 'separator' },
         {
           label: 'Toggle Developer Tools',
+          type: 'checkbox',
           accelerator: isMac ? 'Alt+Command+I' : 'Ctrl+Shift+I',
-          click() { sendToActiveWebview('view:devtools'); }
+          enabled: webview !== NULL_WEBVIEW,
+          checked: webview.isDevToolsOpened(),
+          click: () => {
+            if (webview.isDevToolsOpened()) {
+              webview.closeDevTools();
+            } else {
+              webview.openDevTools();
+            }
+          }
         }
       ]
     },
@@ -74,12 +81,14 @@ function bindAppMenu() {
         {
           label: 'Back',
           accelerator: 'CmdOrCtrl+[',
-          click() { sendToActiveWebview('history:back'); }
+          enabled: webview.canGoBack(),
+          click: () => webview.goBack()
         },
         {
           label: 'Forward',
           accelerator: 'CmdOrCtrl+]',
-          click() { sendToActiveWebview('history:forward'); }
+          enabled: webview.canGoForward(),
+          click: () => webview.goForward()
         }
       ]
     },
@@ -144,55 +153,36 @@ function bindAppMenu() {
   Menu.setApplicationMenu(menu);
 }
 
-function bindContextMenu(browserWindow) {
-  browserWindow.webContents.on('context-menu', (event, params) => {
-    const template = [];
-    const { isEditable, editFlags } = params;
+export default function bindMenu() {
+  let menu = null;
+  let webview = NULL_WEBVIEW;
 
-    if (isEditable) {
-      template.push({
-        label: 'Undo',
-        role: editFlags.canUndo ? 'undo' : '',
-        enabled: editFlags.canUndo
-      }, {
-        label: 'Redo',
-        role: editFlags.canRedo ? 'redo' : '',
-        enabled: editFlags.canRedo
-      }, {
-        type: 'separator'
-      }, {
-        label: 'Cut',
-        role: editFlags.canCut ? 'cut' : '',
-        enabled: editFlags.canCut
-      }, {
-        label: 'Copy',
-        role: editFlags.canCopy ? 'copy' : '',
-        enabled: editFlags.canCopy
-      }, {
-        label: 'Paste',
-        role: editFlags.canPaste ? 'paste' : '',
-        enabled: editFlags.canPaste
-      }, {
-        label: 'Paste and Match Style',
-        role: editFlags.canPaste ? 'pasteandmatchstyle' : '',
-        enabled: editFlags.canPaste
-      }, {
-        label: 'Select All',
-        role: editFlags.canSelectAll ? 'selectall' : '',
-        enabled: editFlags.canSelectAll
-      });
-    }
+  function replaceMenu() {
+    const oldMenu = menu;
+    menu = bindAppMenu(webview);
+    if (oldMenu) oldMenu.destroy();
+  }
 
-    if (template.length === 0) {
-      return;
-    }
+  function bindEventListeners() {
+    webview.addListener('did-start-loading', replaceMenu);
+    webview.addListener('did-stop-loading', replaceMenu);
+    webview.addListener('devtools-opened', replaceMenu);
+    webview.addListener('devtools-closed', replaceMenu);
+  }
 
-    const menu = Menu.buildFromTemplate(template);
-    menu.popup(browserWindow);
+  function unbindEventListeners() {
+    webview.removeListener('did-start-loading', replaceMenu);
+    webview.removeListener('did-stop-loading', replaceMenu);
+    webview.removeListener('devtools-opened', replaceMenu);
+    webview.removeListener('devtools-closed', replaceMenu);
+  }
+
+  replaceMenu(webview);
+
+  ipcMain.on('webview:focus', (event, id) => {
+    unbindEventListeners();
+    webview = getWebview(id);
+    replaceMenu();
+    bindEventListeners();
   });
-}
-
-export default function bindMenus(browserWindow) {
-  bindAppMenu();
-  bindContextMenu(browserWindow);
 }
