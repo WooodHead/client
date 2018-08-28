@@ -1,7 +1,7 @@
 import path from 'path';
 import React from 'react';
 import classNames from 'classnames';
-import { string, func } from 'prop-types';
+import { bool, string, func } from 'prop-types';
 import { noop } from 'lodash';
 
 import getStaticPath from '../../../util/getStaticPath';
@@ -15,6 +15,7 @@ export default class DAppContainer extends React.PureComponent {
   static propTypes = {
     className: string,
     sessionId: string.isRequired,
+    active: bool,
     tab: tabShape.isRequired,
     setTabError: func.isRequired,
     setTabTitle: func.isRequired,
@@ -30,6 +31,7 @@ export default class DAppContainer extends React.PureComponent {
 
   static defaultProps = {
     className: null,
+    active: false,
     onFocus: noop
   }
 
@@ -58,6 +60,10 @@ export default class DAppContainer extends React.PureComponent {
 
     if (nextTab.addressBarEntry && nextTab.requestCount !== this.props.tab.requestCount) {
       this.webview.loadURL(nextTab.target);
+    }
+
+    if (nextProps.active && !this.props.active) {
+      this.handleFocus(nextProps);
     }
   }
 
