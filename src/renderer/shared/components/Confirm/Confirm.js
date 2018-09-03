@@ -6,7 +6,6 @@ import { noop } from 'lodash';
 import Modal from '../Modal';
 import Button from '../Forms/Button';
 import PrimaryButton from '../Forms/PrimaryButton';
-import defaultImage from '../../images/modal-request-icon.png';
 import styles from './Confirm.scss';
 
 export default class Confirm extends React.PureComponent {
@@ -14,7 +13,6 @@ export default class Confirm extends React.PureComponent {
     className: string,
     children: node,
     title: string,
-    image: string,
     confirmLabel: string,
     cancelLabel: string,
     onConfirm: func,
@@ -25,7 +23,6 @@ export default class Confirm extends React.PureComponent {
     className: null,
     children: null,
     title: null,
-    image: defaultImage,
     confirmLabel: 'OK',
     cancelLabel: 'Cancel',
     onConfirm: noop,
@@ -39,7 +36,6 @@ export default class Confirm extends React.PureComponent {
   render() {
     const {
       className,
-      image,
       confirmLabel,
       cancelLabel,
       onConfirm,
@@ -49,9 +45,6 @@ export default class Confirm extends React.PureComponent {
 
     return (
       <Modal className={classNames(styles.confirm, className)}>
-        <div className={styles.media}>
-          <img src={image} width="200" alt="Icon" />
-        </div>
         <div className={styles.content}>
           {this.renderTitle()}
           <div className={styles.body}>
